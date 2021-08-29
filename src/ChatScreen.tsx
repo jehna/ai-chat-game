@@ -74,7 +74,7 @@ export function ChatScreen() {
         setTheirName("Miranda");
         alert("You win!");
       }
-      document.querySelector("main")?.scrollTo(0, Infinity);
+      window.scrollTo(0, document.body.scrollHeight);
     });
 
     return () => {

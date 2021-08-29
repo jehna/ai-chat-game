@@ -9,9 +9,9 @@ type Message = {
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const toAiMessage = (
-  messages: Message[]
-) => `Miranda wants to tell her name only after you tell her yours. Miranda likes dogs.
+const toAiMessage = (messages: Message[]) => `Miranda ${
+  messages.length > 10 ? "wants" : "does not want"
+} to tell her name. Miranda likes dogs.
 ${messages
   .slice(-3)
   .map(({ message, side }) => `${side === "me" ? "Me" : "Miranda"}: ${message}`)
@@ -49,7 +49,10 @@ const getNextMessage = (
 ): Promise<string> =>
   getNextMessageReq(messages, signal).then(
     ([{ generated_text: generatedText }]) => {
-      const message = generatedText.split("\n").filter(Boolean)[0];
+      const message = generatedText
+        .split("\n")
+        .filter(Boolean)[0]
+        ?.replace(/^Miranda: /, "");
       return message;
     }
   );

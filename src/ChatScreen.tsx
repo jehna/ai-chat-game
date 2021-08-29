@@ -11,12 +11,12 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const toAiMessage = (
   messages: Message[]
-) => `Kate wants to tell her name only after you tell her yours. Kate likes dogs.
+) => `Miranda wants to tell her name only after you tell her yours. Miranda likes dogs.
 ${messages
   .slice(-3)
-  .map(({ message, side }) => `${side === "me" ? "Me" : "Kate"}: ${message}`)
+  .map(({ message, side }) => `${side === "me" ? "Me" : "Miranda"}: ${message}`)
   .join("\n")}
-Kate: `;
+Miranda: `;
 
 const getNextMessageReq = (
   messages: Message[],
@@ -70,8 +70,8 @@ export function ChatScreen() {
     getNextMessage(messages, c.signal).then((message) => {
       setOtherIsTyping(false);
       setMessages([...messages, { side: "them", message }]);
-      if (message.includes("Kate")) {
-        setTheirName("Kate");
+      if (message.includes("Miranda")) {
+        setTheirName("Miranda");
         alert("You win!");
       }
       document.querySelector("main")?.scrollTo(0, Infinity);

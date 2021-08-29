@@ -51,7 +51,8 @@ const getNextMessage = (
     ([{ generated_text: generatedText }]) => {
       const message = generatedText
         .split("\n")
-        .filter(Boolean)[0]
+        .filter(Boolean)
+        .filter((s) => !s.startsWith("Me: "))[0]
         ?.replace(/^Miranda: /, "");
       return message;
     }

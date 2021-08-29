@@ -99,6 +99,7 @@ export function ChatScreen() {
     setMessage("");
     scrollToBottom();
   };
+  useEffect(scrollToBottom, [otherIsTyping]);
   return (
     <div className="chat-screen">
       <header>

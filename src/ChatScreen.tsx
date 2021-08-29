@@ -58,6 +58,12 @@ const getNextMessage = (
     }
   );
 
+const scrollToBottom = () => {
+  setTimeout(() => {
+    window.scrollTo(0, document.body.scrollHeight);
+  }, 0);
+};
+
 export function ChatScreen() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -78,7 +84,7 @@ export function ChatScreen() {
         setTheirName("Miranda");
         alert("You win!");
       }
-      window.scrollTo(0, document.body.scrollHeight);
+      scrollToBottom();
     });
 
     return () => {
@@ -91,7 +97,7 @@ export function ChatScreen() {
     e.preventDefault();
     setMessages([...messages, { side: "me", message }]);
     setMessage("");
-    document.querySelector("main")?.scrollTo(0, Infinity);
+    scrollToBottom();
   };
   return (
     <div className="chat-screen">

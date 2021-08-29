@@ -52,7 +52,7 @@ const getNextMessage = (
       const message = generatedText
         .split("\n")
         .map((s) =>
-          s.replace(/^[^a-zA-Z?]*/, "").replace(/^Miranda: ?[^a-zA-Z?]*/, "")
+          s.replace(/^[^a-zA-Z]*/, "").replace(/^Miranda: ?[^a-zA-Z]*/, "")
         )
         .filter(Boolean)
         .filter((s) => !s.startsWith("Me: "))[0];

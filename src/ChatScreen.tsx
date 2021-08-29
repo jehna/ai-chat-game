@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import sendImage from "./send.svg";
 import "./ChatScreen.scss";
 
@@ -11,17 +11,17 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const toAiMessage = (
   messages: Message[]
-) => `Kate wants to tell her name. Kate likes to answer in riddles.
+) => `Kate wants to tell her name only after you tell her yours. Kate likes dogs.
 ${messages
   .slice(-3)
   .map(({ message, side }) => `${side === "me" ? "Me" : "Kate"}: ${message}`)
   .join("\n")}
 Kate: `;
 
-const getNextMessage = (
+const getNextMessageReq = (
   messages: Message[],
   signal: AbortSignal
-): Promise<string> =>
+): Promise<{ generated_text: string }[]> =>
   fetch("https://api.eleuther.ai/completion", {
     credentials: "omit",
     headers: {
@@ -38,15 +38,21 @@ const getNextMessage = (
     method: "POST",
     mode: "cors",
     signal,
-  })
-    .then((res) => {
-      if (res.ok) return res.json();
-      return wait(5000).then(() => getNextMessage(messages, signal));
-    })
-    .then(([{ generated_text: generatedText }]) => {
+  }).then((res) => {
+    if (res.ok) return res.json();
+    return wait(5000).then(() => getNextMessageReq(messages, signal));
+  });
+
+const getNextMessage = (
+  messages: Message[],
+  signal: AbortSignal
+): Promise<string> =>
+  getNextMessageReq(messages, signal).then(
+    ([{ generated_text: generatedText }]) => {
       const message = generatedText.split("\n").filter(Boolean)[0];
       return message;
-    });
+    }
+  );
 
 export function ChatScreen() {
   const [message, setMessage] = useState("");
@@ -66,6 +72,7 @@ export function ChatScreen() {
       setMessages([...messages, { side: "them", message }]);
       if (message.includes("Kate")) {
         setTheirName("Kate");
+        alert("You win!");
       }
       document.querySelector("main")?.scrollTo(0, Infinity);
     });

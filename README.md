@@ -1,16 +1,22 @@
-# Prototype GPT-J-6B game
+# AI chat game prototype
 
-This is a quick prototype game that uses the [EleutherAI
-GPT-J-6B](https://6b.eleuther.ai/) text generation neural network as the main
-gameplay interaction.
+This is a quick prototype game that uses the [EleutherAI GPT-Neo
+2.7B](https://huggingface.co/EleutherAI/gpt-neo-2.7B) text generation neural
+network as the main gameplay interaction. Not exactly GPT-3, but seems to work
+well enough for the use case.
 
-This quick prototype is using EleutherAI's demo instance (sorry!). But they have
-CORS headers that allow requests from any origin, so it's an indicator they
-might allow this kind of thing.
-
-The demo instance is pretty slow though, so expect ~1 min response times.
+This prototype is using the model hosted at [HuggigFace
+🤗](https://huggingface.co/), which uses input character count as main billing
+criteria. This means all requests cost some money, so scaling up this may need
+some monetisation from day one.
 
 Try out the game at:
 https://upbeat-beaver-dea14d.netlify.app/
+## Development
 
-Created using basic create-react app.
+Created using basic create-react app, so you know the drill:
+
+```yarn && yarn start```
+
+You need to add the environment variable `REACT_APP_HUGGINGFACE_TOKEN` to get
+the API to work. Use `.env` file locally.

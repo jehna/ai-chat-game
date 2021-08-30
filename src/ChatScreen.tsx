@@ -11,8 +11,12 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const toAiMessage = (messages: Message[]) => `Miranda ${
   messages.length > 10 ? "wants" : "does not want"
-} to tell her name. Miranda likes dogs.
+} to tell her name.
+
+Miranda: Hello 👋
+Me: Hi 😊
 ${messages
+  .filter(({ message }) => message.replace(/^[^a-zA-Z]*/, "")) // Avoid getting stuck with ????????
   .slice(-3)
   .map(({ message, side }) => `${side === "me" ? "Me" : "Miranda"}: ${message}`)
   .join("\n")}
@@ -22,22 +26,20 @@ const getNextMessageReq = (
   messages: Message[],
   signal: AbortSignal
 ): Promise<{ generated_text: string }[]> =>
-  fetch("https://api.eleuther.ai/completion", {
-    credentials: "omit",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      context: toAiMessage(messages),
-      top_p: 0.9,
-      temp: 0.8,
-      response_length: 128,
-      remove_input: true,
-    }),
-    method: "POST",
-    mode: "cors",
+  fetch("https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-2.7B", {
     signal,
+    headers: {
+      Authorization: `Bearer ${process.env.REACT_APP_HUGGINGFACE_TOKEN}`,
+    },
+    method: "POST",
+    body: JSON.stringify({
+      inputs: toAiMessage(messages),
+      parameters: {
+        return_full_text: false,
+        max_new_tokens: 100,
+        repetition_penalty: 50.1,
+      },
+    }),
   }).then((res) => {
     if (res.ok) return res.json();
     return wait(5000).then(() => getNextMessageReq(messages, signal));
@@ -51,9 +53,7 @@ const getNextMessage = (
     ([{ generated_text: generatedText }]) => {
       const message = generatedText
         .split("\n")
-        .map((s) =>
-          s.replace(/^[^a-zA-Z]*/, "").replace(/^Miranda: ?[^a-zA-Z]*/, "")
-        )
+        .map((s) => s.replace(/^Miranda: ?/, ""))
         .filter(Boolean)
         .filter((s) => !s.startsWith("Me: "))[0];
       return message;

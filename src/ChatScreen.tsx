@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import sendImage from "./send.svg";
+import confetti from "canvas-confetti";
 import "./ChatScreen.scss";
 
 type Message = {
@@ -9,12 +10,14 @@ type Message = {
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const toAiMessage = (messages: Message[]) => `Miranda ${
-  messages.length > 10 ? "wants" : "does not want"
-} to tell her name.
+const gameMessage = (messages: Message[], gameState: GameState) =>
+  gameState.prompt;
+
+const toAiMessage = (messages: Message[], gameState: GameState) =>
+  `${gameMessage(messages, gameState)}
 
 Miranda: Hello 👋
-Me: Hi 😊
+Me: Hey 😇
 ${messages
   .filter(({ message }) => message.replace(/^[^a-zA-Z]*/, "")) // Avoid getting stuck with ????????
   .slice(-3)
@@ -24,7 +27,8 @@ Miranda: `;
 
 const getNextMessageReq = (
   messages: Message[],
-  signal: AbortSignal
+  signal: AbortSignal,
+  gameState: GameState
 ): Promise<{ generated_text: string }[]> =>
   fetch("https://api-inference.huggingface.co/models/EleutherAI/gpt-neo-2.7B", {
     signal,
@@ -33,27 +37,44 @@ const getNextMessageReq = (
     },
     method: "POST",
     body: JSON.stringify({
-      inputs: toAiMessage(messages),
+      inputs: toAiMessage(messages, gameState),
       parameters: {
         return_full_text: false,
         max_new_tokens: 100,
-        repetition_penalty: 50.1,
+        repetition_penalty: 10.1,
       },
     }),
   }).then((res) => {
     if (res.ok) return res.json();
-    return wait(5000).then(() => getNextMessageReq(messages, signal));
+    return wait(5000).then(() =>
+      getNextMessageReq(messages, signal, gameState)
+    );
   });
+
+const removeRepeatedSpecialCharactersFromStart = (s: string) => {
+  if (!/^[^a-zA-Z]/.test(s)) return s;
+  const first = s[0];
+  return s.replace(new RegExp(`^[${first}]+`), first);
+};
+
+const removePartialSentenceFromEnd = (s: string) => {
+  const lastDot = s.lastIndexOf(".");
+  if (lastDot === -1) return s;
+  return s.slice(0, lastDot);
+};
 
 const getNextMessage = (
   messages: Message[],
-  signal: AbortSignal
+  signal: AbortSignal,
+  gameState: GameState
 ): Promise<string> =>
-  getNextMessageReq(messages, signal).then(
+  getNextMessageReq(messages, signal, gameState).then(
     ([{ generated_text: generatedText }]) => {
       const message = generatedText
         .split("\n")
         .map((s) => s.replace(/^Miranda: ?/, ""))
+        .map(removeRepeatedSpecialCharactersFromStart)
+        .map(removePartialSentenceFromEnd)
         .filter(Boolean)
         .filter((s) => !s.startsWith("Me: "))[0];
       return message;
@@ -66,11 +87,50 @@ const scrollToBottom = () => {
   }, 0);
 };
 
+type GameState = {
+  key: string;
+  triggerWords: string[];
+  objective: string;
+  prompt: string;
+};
+
+const GAME_STATES: GameState[] = [
+  {
+    key: "ask-for-name",
+    triggerWords: ["Miranda"],
+    objective:
+      "Objective: Try to strike up a conversation an find out their name",
+    prompt: "Miranda is sad 😢",
+  },
+  {
+    key: "why-so-sad",
+    triggerWords: ["Amy"],
+    objective:
+      "Objective: Find out what bothers Miranda, but don't be too pushy!",
+    prompt:
+      "Miranda wants to tell something about Amy 🙊. Something happened to Amy.",
+  },
+  {
+    key: "what-happened-to-amy",
+    triggerWords: ["dead", "death", "died"],
+    objective: "Objective: What happened to Amy? Be delicate.",
+    prompt: "Amy is dead 😵. Miranda wants to tell that Amy is dead 🪦",
+  },
+  {
+    key: "won-game",
+    triggerWords: [],
+    objective: "You won!",
+    prompt: "Miranda feels better.",
+  },
+];
+
 export function ChatScreen() {
+  const [gameStateIndex, setGameStateIndex] = useState(0);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [otherIsTyping, setOtherIsTyping] = useState(false);
-  const [theirName, setTheirName] = useState("Unknown");
+  const gameState = GAME_STATES[gameStateIndex];
+  const theirName = gameState.key === "ask-for-name" ? "Unknown" : "Miranda";
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
     if (!lastMessage || lastMessage.side === "them") return;
@@ -79,14 +139,18 @@ export function ChatScreen() {
     wait(1500).then(() => !cancelled && setOtherIsTyping(true));
 
     const c = new AbortController();
-    getNextMessage(messages, c.signal).then((message) => {
+    getNextMessage(messages, c.signal, gameState).then((message) => {
       setOtherIsTyping(false);
       setMessages([...messages, { side: "them", message }]);
-      if (message.includes("Miranda")) {
-        setTheirName("Miranda");
-        alert("You win!");
+
+      if (
+        gameState.triggerWords.some((triggerWord) =>
+          message.includes(triggerWord)
+        )
+      ) {
+        confetti();
+        setGameStateIndex(gameStateIndex + 1);
       }
-      scrollToBottom();
     });
 
     return () => {
@@ -94,7 +158,7 @@ export function ChatScreen() {
       setOtherIsTyping(false);
       c.abort();
     };
-  }, [messages, setOtherIsTyping]);
+  }, [gameState, messages, setOtherIsTyping, gameStateIndex]);
   const onSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setMessages([...messages, { side: "me", message }]);
@@ -108,11 +172,7 @@ export function ChatScreen() {
         <div className="image">?</div>
         {theirName}
       </header>
-      <div className="objective">
-        {theirName === "Unknown"
-          ? "Objective: Find out their name"
-          : "You won the game!"}
-      </div>
+      <div className="objective">{gameState.objective}</div>
       <main>
         <div className="start">Started conversation with {theirName}</div>
         {messages.map(({ message, side }) => (
